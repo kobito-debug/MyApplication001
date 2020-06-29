@@ -10,7 +10,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final int DATABASE_VERSION=1;
     private static final String SQL_CREATE_ENTRIES_POST=
             "create table location(" +
-            "id integer primary key," +
+            "id integer primary key autoincrement," +
             "user_id integer not null," +
             "laitude double not null," +
             "longitude double not null," +

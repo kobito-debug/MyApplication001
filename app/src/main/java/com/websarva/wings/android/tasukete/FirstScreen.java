@@ -20,12 +20,21 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 public class FirstScreen extends AppCompatActivity implements LocationListener {
 
     LocationManager locationManager;
     double latitude;
     double longitude;
-    double id;
+    DateFormat dfDate;
+    DateFormat dfTime;
+    String date;
+    String time;
+    SQLiteDatabase db;
+    int user_id=1;//仮
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -142,6 +151,9 @@ public class FirstScreen extends AppCompatActivity implements LocationListener {
     public void onLocationChanged(Location location) {
         latitude=location.getLatitude();
         longitude=location.getLongitude();
+        String strDate=getNowDate();
+        String strTime=getNowTime();
+        insertData(db,user_id,latitude,longitude,strDate,strTime);
     }
 
     @Override
@@ -152,5 +164,17 @@ public class FirstScreen extends AppCompatActivity implements LocationListener {
     @Override
     public void onProviderDisabled(String provider) {
 
+    }
+
+    public static String getNowDate(){
+        final DateFormat df=new SimpleDateFormat("yyyy/MM/dd");
+        final Date date=new Date(System.currentTimeMillis());
+        return df.format(date);
+    }
+
+    public static String getNowTime(){
+        final DateFormat df=new SimpleDateFormat("HH:mm:ss");
+        final Date time=new Date(System.currentTimeMillis());
+        return df.format(time);
     }
 }
