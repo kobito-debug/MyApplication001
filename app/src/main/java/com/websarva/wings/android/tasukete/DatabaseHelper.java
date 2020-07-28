@@ -10,13 +10,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final int DATABASE_VERSION=1;
     private static final String SQL_CREATE_ENTRIES_POST=
             "create table location(" +
-            "id integer primary key autoincrement," +
+            "id integer primary key," +
             "user_id integer not null," +
-            "laitude double not null," +
-            "longitude double not null," +
+            "laitude Double not null," +
+            "longitude Double not null," +
             "date text not null," +
-            "time text not null" +
-            ")";
+            "time text not null)";
     private static final String SQL_DELETE_ENTRIES="DROP TABLE IF EXISTS location";
 
     DatabaseHelper(Context context){

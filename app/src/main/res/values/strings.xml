@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Tasukete</string>
     <string name="bt_emergency">緊急</string>
+    <string name="bt_resister">データ登録</string>
 </resources>
