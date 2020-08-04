@@ -3,6 +3,7 @@ package com.websarva.wings.android.tasukete;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
@@ -42,18 +43,30 @@ public class FirstScreen extends AppCompatActivity {
     String date;
     String time;
     private SQLiteDatabase db;
-    int user_id=1;//仮
+    int user_id = 1;//仮
     private DatabaseHelper helper;
-    Notification notification=null;//通知
+    Notification notification = null;//通知
+    Double distance;
+    TextView tvRead;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-       LocationManager locationManager=(LocationManager)getSystemService(LOCATION_SERVICE);
-       GPSLocationListener locationListener=new GPSLocationListener();
-       locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,0,0,locationListener);
+        LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        GPSLocationListener locationListener = new GPSLocationListener();
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    Activity#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for Activity#requestPermissions for more details.
+            return;
+        }
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
         Button btEmergency=findViewById(R.id.btEmergency);
         btEmergency.setOnClickListener(new View.OnClickListener(){
             @Override
@@ -69,6 +82,8 @@ public class FirstScreen extends AppCompatActivity {
             }
         });
 
+        tvRead=findViewById(R.id.tvRead);
+
         //日時の表示
         TextView tvDate=findViewById(R.id.tvDate);
         TextView tvTime=findViewById(R.id.tvTime);
@@ -81,20 +96,17 @@ public class FirstScreen extends AppCompatActivity {
         tvLongitude=findViewById(R.id.tvLongitude);
 
         //通知の発行
-       /* NotificationManager notificationManager=(NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
-        String chID=getString(R.string.app_name);
-        if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O){
-            NotificationChannel notificationChannel = new NotificationChannel(chID, chID, NotificationManager.IMPORTANCE_DEFAULT);
-            notificationChannel.setDescription(chID);
-            notificationManager.createNotificationChannel(notificationChannel);
-            notification = new Notification.Builder(this, chID).setContentTitle(getString(R.string.app_name)).setContentText("アプリ通知テスト26以上").setSmallIcon(R.drawable.icon).build();
-        }else{
-            notification=new Notification.Builder(this).setContentTitle(getString(R.string.app_name))
-                    .setContentText("アプリ通知テスト25まで")
-                    .setSmallIcon(R.drawable.icon)
-                    .build();
+        String id="help_me_notification_channel";
+        String name=getString(R.string.notification_channel_name);
+        int importance=NotificationManager.IMPORTANCE_DEFAULT;
+        NotificationChannel channel= null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            channel = new NotificationChannel(id,name,importance);
         }
-        notificationManager.notify(1,notification);*/
+        NotificationManager manager=(NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            manager.createNotificationChannel(channel);
+        }
     }
 
     public void onResisterClicked(View view){
@@ -103,26 +115,37 @@ public class FirstScreen extends AppCompatActivity {
         insertData(db,user_id,latitude,longitude,date,time);
     }
     public void onEmergencyClicked(View view){
+        //通知
+        NotificationCompat.Builder builder=new NotificationCompat.Builder(FirstScreen.this,"help_me_notification_channel");
+        builder.setSmallIcon(android.R.drawable.ic_dialog_info);
+        builder.setContentTitle(getString(R.string.msg_notification_title_finish));
+        builder.setContentText(getString(R.string.msg_notification_text_finish));
+        Notification notification=builder.build();
+        NotificationManager manager=(NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager != null) {
+            manager.notify(0,notification);
+        }
+        
         //周辺の人を探す
         if(helper==null){
             helper=new DatabaseHelper(FirstScreen.this);
         }
-        db=helper.getWritableDatabase();
+        db=helper.getReadableDatabase();
         try{
             //緯度経度から距離を計算し、3㎞圏内にいるユーザーを探す
-            Cursor c=db.rawQuery(
-                    " with distance_name as (" +
-                            "select id,name,latitude,longitude,(" +
-                                "6371*acos(cos(radians(35))*cos(radians(latitude))*cos(radians(longitude)-radians(139))+sin(radians(35))*sin(radians(latitude))" +
+            /*Cursor c=db.rawQuery(
+                            "select user_id,laitude,longitude,(" +
+                                "6371*acos(cos(radians(35))*cos(radians(laitude))*cos(radians(longitude)-radians(139))+sin(radians(35))*sin(radians(laitude))" +
                             "   )" +
-                            ") as distance from location " +
-                            "inner join user on location.user_id=user.id) select name,distance from distance_name where distance <=3;",null);
+                            ") as distance from location;",null);*/
+            Cursor c=db.rawQuery("select user_id,laitude,longitude from location;",null);
             boolean next=c.moveToFirst();
             while (next){
                 user_id=c.getInt(0);
                 latitude=c.getDouble(1);
                 longitude=c.getDouble(2);
-
+                //distance=c.getDouble(3);
+                tvRead.setText(user_id+" | "+latitude+" | "+longitude+" | "+distance);//該当したユーザーを表示
                 next=c.moveToNext();
             }
         }finally {
@@ -130,10 +153,14 @@ public class FirstScreen extends AppCompatActivity {
         }
     }
 
+    public static double deg2rad(double deg){
+        return deg*Math.PI/180.0;
+    }
+
     private void insertData(SQLiteDatabase db,int user_id,double latitude,double longitude,String date,String time){
         ContentValues values=new ContentValues();
         values.put("user_id",user_id);
-        values.put("latitude",latitude);
+        values.put("laitude",latitude);
         values.put("longitude",longitude);
         values.put("date",date);
         values.put("time",time);

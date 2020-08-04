@@ -2,4 +2,7 @@
     <string name="app_name">Tasukete</string>
     <string name="bt_emergency">緊急</string>
     <string name="bt_resister">データ登録</string>
+    <string name="notification_channel_name">通知</string>
+    <string name="msg_notification_title_finish">誰かが助けを呼んでいます</string>
+    <string name="msg_notification_text_finish">〇〇さんが××で助けを求めています</string>
 </resources>
