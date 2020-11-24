@@ -7,6 +7,7 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -19,6 +20,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.DocumentsContract;
@@ -29,9 +31,22 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.w3c.dom.Text;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.sql.SQLException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.sql.DriverManager;
+import java.util.Properties;
+import java.sql.*;
+
+import android.os.AsyncTask;
 
 public class FirstScreen extends AppCompatActivity {
 
@@ -48,6 +63,8 @@ public class FirstScreen extends AppCompatActivity {
     Notification notification = null;//通知
     Double distance;
     TextView tvRead;
+    URI dbUri;
+    Connection conn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,9 +127,11 @@ public class FirstScreen extends AppCompatActivity {
     }
 
     public void onResisterClicked(View view){
-        if(helper==null)helper=new DatabaseHelper(getApplicationContext());
+        /*if(helper==null)helper=new DatabaseHelper(getApplicationContext());
         if(db==null)db=helper.getWritableDatabase();
-        insertData(db,user_id,latitude,longitude,date,time);
+        insertData(db,user_id,latitude,longitude,date,time);*/
+        DatabaseReceiver databaseReceiver=new DatabaseReceiver(FirstScreen.this);
+        databaseReceiver.execute();
     }
     public void onEmergencyClicked(View view){
         //通知
@@ -125,7 +144,7 @@ public class FirstScreen extends AppCompatActivity {
         if (manager != null) {
             manager.notify(0,notification);
         }
-        
+
         //周辺の人を探す
         if(helper==null){
             helper=new DatabaseHelper(FirstScreen.this);
@@ -166,6 +185,65 @@ public class FirstScreen extends AppCompatActivity {
         values.put("time",time);
 
         db.insert("location",null,values);
+    }
+
+    private class DatabaseReceiver extends AsyncTask<String,String,String>{
+        String col1;
+        Activity activity=null;
+        private DatabaseReceiver(Activity act){
+            activity = act;
+        }
+
+        @Override
+        public String doInBackground(String... params) {
+           String result="";
+           //Connection conn=null;
+           Statement stmt=null;
+           ResultSet rset=null;
+
+           try{
+               dbUri=new URI(System.getenv("DATABASE_URL"));
+               String username=dbUri.getUserInfo().split(":")[0];
+               String password=dbUri.getUserInfo().split(":")[1];
+               String dbUrl="jdbc:postgresql://"+dbUri.getHost()+dbUri.getPath();
+               conn=DriverManager.getConnection("jdbc:postgresql://"+dbUrl,username,password);
+               //SELECT文の実行
+               stmt=conn.createStatement();
+               String sql="select * from location limit 1";
+               rset=stmt.executeQuery(sql);
+               //SELECT結果の受け取り
+               while(rset.next()){
+                   String col=rset.getString(1);
+                   col1=col+rset.getString(2);
+               }
+
+               //INSERT文の実行
+               sql="insert inot location values("+user_id+","+latitude+","+longitude+","+date+","+time+",)";
+               stmt.executeUpdate(sql);
+               conn.commit();
+           }catch(Exception e) {
+               e.printStackTrace();
+           }finally {
+               try{
+                   if(rset!=null) rset.close();
+                   if(stmt!=null) stmt.close();
+                   if(conn!=null) conn.close();
+               }catch (SQLException e){
+                   e.printStackTrace();
+               }
+           }
+           return result;
+        }
+
+        @Override
+        public void onPostExecute(String result){
+            Toast.makeText(FirstScreen.this,"登録を終了しました",Toast.LENGTH_LONG).show();
+            tvRead.setText(col1);
+            String dbUriNull="dbUri is null";
+            if(dbUri==null)tvRead.setText(dbUriNull);
+            String connNull="conn is null";
+            if(conn==null)tvRead.setText(connNull);
+        }
     }
 
     @Override
